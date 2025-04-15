@@ -111,7 +111,7 @@ Selection Sort repeatedly selects the minimum element from the unsorted portion 
     \item Worst case: $O(n^2)$
 \end{itemize}
 
-Selection Sort has consistent performance regardless of the input distribution. However, it is generally outperformed by Insertion Sort in practice, especially for partially sorted arrays. Unlike Insertion Sort, Selection Sort is not stable, though it has the advantage of minimizing the number of swaps.
+Selection Sort has consistent performance regardless of the input distribution. It always performs exactly the same number of comparisons and swaps even if the input is already sorted, which is why it maintains $O(n^2)$ complexity in all cases. Unlike Insertion Sort, Selection Sort is not stable, though it has the advantage of minimizing the number of swaps to $O(n)$.
 
 \subsection{Quick Sort}
 Quick Sort is another divide-and-conquer algorithm that selects a 'pivot' element and partitions the array around this pivot \cite{hoare1961algorithm}.
@@ -120,10 +120,10 @@ Quick Sort is another divide-and-conquer algorithm that selects a 'pivot' elemen
 \begin{itemize}
     \item Best case: $O(n \log n)$
     \item Average case: $O(n \log n)$
-    \item Worst case: $O(n^2)$ - typically when the array is already sorted and the pivot selection is poor
+    \item Worst case: $O(n^2)$ - occurs when the partition process consistently produces highly unbalanced divisions
 \end{itemize}
 
-In our implementation, we used a randomized pivot selection strategy to avoid the worst-case scenario for pre-sorted arrays. Quick Sort offers excellent average-case performance and is widely used in practice. It sorts in-place but is not stable.
+In our implementation, we used a "median-of-three" pivot selection strategy (choosing the median among the first, middle, and last elements) to reduce the likelihood of encountering worst-case scenarios. This approach helps avoid poor performance on pre-sorted or reverse-sorted arrays where always choosing the first or last element as pivot would lead to $O(n^2)$ behavior. Quick Sort offers excellent average-case performance and is widely used in practice. It sorts in-place but is not stable.
 
 While Quick Sort typically outperforms other $O(n \log n)$ algorithms like Merge Sort in practice due to its lower constant factors, its worst-case performance can be a concern for critical applications where predictable performance is essential.
 
@@ -152,7 +152,7 @@ function LibrarySort(array A)
 \textbf{Time Complexity:}
 \begin{itemize}
     \item Best case: $O(n)$
-    \item Average case: $O(n \log n)$
+    \item Average case: $O(n \log n)$ with high probability
     \item Worst case: $O(n^2)$
 \end{itemize}
 
@@ -284,7 +284,7 @@ end function
 \textbf{Time Complexity:}
 \begin{itemize}
     \item Best case: $O(n \log n)$
-    \item Average case: $O(n^2/2^p)$ where p is the number of increments
+    \item Average case: Between $O(n \log n)$ and $O(n^2)$
     \item Worst case: $O(n^2)$
 \end{itemize}
 
@@ -349,9 +349,9 @@ Introsort (Introspective Sort) is a hybrid sorting algorithm that combines Quick
 \textbf{Pseudo-code:}
 \begin{verbatim}
 procedure sort(A : array)
-    maxdepth = ⌊log2(length(A))⌋ × 2
+    maxdepth = 2 × floor(log2(length(A)))
     introsort(A, maxdepth)
-
+    
 procedure introsort(A, maxdepth)
     n ← length(A)
     if n < 16
@@ -376,7 +376,7 @@ Introsort begins with Quick Sort but switches to Heap Sort when the recursion de
 This hybrid approach combines the best aspects of these algorithms: Quick Sort's good average-case performance, Heap Sort's guaranteed $O(n \log n)$ worst-case performance, and Insertion Sort's efficiency for small arrays. Introsort is the default sorting algorithm in many C++ standard library implementations, demonstrating its practical efficiency.
 
 \section{EXPERIMENTAL RESULTS AND ANALYSIS}
-We conducted extensive experiments to evaluate the performance of the twelve sorting algorithms across different input types and sizes. All experiments were run on a system with an Intel Core i7-10700K CPU and 32GB RAM, and each test was repeated at least 10 times to ensure statistical validity.
+We conducted extensive experiments to evaluate the performance of the twelve sorting algorithms across different input types and sizes. All experiments were run on a system with an Intel Core i7-1165G7 CPU and 16GB RAM, and each test was repeated at least 10 times to ensure statistical validity.
 
 \textbf{Note on Input Size Limitation:} While the assignment suggested testing with input sizes up to 1 million elements, we found that running O(n²) algorithms (such as Bubble Sort, Selection Sort, Insertion Sort, and Cocktail Sort) with 1M elements resulted in core dumps due to excessive memory usage and execution time. Therefore, we limited our maximum test size to 150,000 elements for all algorithms to ensure consistent comparison across all sorting methods. This adjustment still allowed us to clearly observe and analyze the scaling behavior of different algorithm complexities.
 
@@ -411,9 +411,9 @@ We tested four different input distributions: sorted arrays (ascending), reverse
   \end{minipage}
 \end{figure*}
 
-For sorted arrays (Figure \ref{fig:ascending}), algorithms like Insertion Sort and Bubble Sort with early termination performed very well due to their ability to recognize and exploit existing order. Library Sort showed unexpectedly poor performance on sorted arrays, while many of the efficient algorithms like Merge Sort maintained consistent performance regardless of input order.
+For sorted arrays (Figure \ref{fig:ascending}), contrary to theoretical expectations, our experimental results showed that Bubble Sort, Insertion Sort, and Library Sort performed the worst. This is particularly surprising for Insertion Sort, which theoretically should achieve O(n) time complexity on already sorted data. This discrepancy likely stems from implementation details or testing methodology issues in our code.
 
-Reverse sorted arrays (Figure \ref{fig:descending}) presented challenges for simpler algorithms like Bubble Sort, with Cocktail Sort showing especially poor performance. Interestingly, Insertion Sort performed better than expected on these inputs. Merge Sort, Heap Sort, and Introsort maintained consistent performance, while Comb Sort showed significant improvement over regular Bubble Sort.
+Reverse sorted arrays (Figure \ref{fig:descending}) presented significant challenges for several algorithms in our implementation. Cocktail Sort showed the poorest performance, followed by Bubble Sort, Insertion Sort, Library Sort, and Selection Sort. The remaining algorithms maintained relatively good performance. The poor performance of Insertion Sort on reverse sorted arrays aligns with theoretical expectations, as this represents its worst-case scenario.
 
 \begin{figure}[h]
   \centering
@@ -422,10 +422,16 @@ Reverse sorted arrays (Figure \ref{fig:descending}) presented challenges for sim
   \label{fig:partially}
 \end{figure}
 
-Partially sorted arrays (Figure \ref{fig:partially}) highlighted the adaptive nature of Tim Sort and Insertion Sort, which performed particularly well in this scenario. Bubble Sort again showed poor scaling behavior, while the hybrid approaches maintained consistent performance.
+For partially sorted arrays (Figure \ref{fig:partially}), Bubble Sort performed worst, followed by Selection Sort, Cocktail Sort, Library Sort, and Insertion Sort. This is somewhat unexpected for Insertion Sort and Library Sort, which should theoretically handle partially sorted data efficiently. The more advanced algorithms (Merge Sort, Heap Sort, Quick Sort, Tim Sort, and Introsort) consistently delivered good performance across this input type.
+
+For random arrays (Figure \ref{fig:scaling}), as expected, the quadratic algorithms showed poor scaling, with Bubble Sort performing worst, followed by Cocktail Sort, Selection Sort, and Insertion Sort.
+
+Throughout our testing, the O(n log n) algorithms consistently outperformed the O(n²) algorithms for larger input sizes, which aligns with theoretical expectations. However, some specific behaviors, particularly the poor performance of certain algorithms on input types where they should theoretically excel, suggest potential issues in our implementation or measurement methodology. Different compiler optimizations, cache effects, or subtle implementation details might also contribute to these discrepancies.
+
+Where our results diverge from theoretical expectations, we believe optimization opportunities exist in our code. Future work could focus on refining the implementation of these algorithms to better match their theoretical efficiency.
 
 \subsection{Memory Usage Analysis}
-Beyond time complexity, we also analyzed the memory requirements of each algorithm based on their theoretical space complexity:
+We performed a theoretical analysis of the memory requirements of each algorithm based on their space complexity:
 
 \begin{itemize}
   \item \textbf{Constant space ($O(1)$)}: Bubble Sort, Selection Sort, Insertion Sort, Heap Sort, Cocktail Sort, and Comb Sort all operate in-place, requiring only a few variables regardless of input size.
@@ -435,12 +441,12 @@ Beyond time complexity, we also analyzed the memory requirements of each algorit
   \item \textbf{Linear space ($O(n)$)}: Merge Sort, Tournament Sort, and Library Sort require additional memory proportional to the input size. Tim Sort also requires linear extra space in the worst case, though it attempts to minimize memory usage through various optimizations.
 \end{itemize}
 
-While the asymptotic space complexity is important, the actual memory footprint can vary based on implementation details. Our experiments confirmed that the in-place algorithms maintained minimal memory usage even for the largest datasets.
+While we did not conduct explicit measurements of memory consumption during our experiments, the theoretical space complexity provides important guidance for algorithm selection in memory-constrained environments. The in-place algorithms (those with $O(1)$ space complexity) would theoretically be preferable when memory resources are limited, with Heap Sort being particularly attractive due to its combination of $O(n \log n)$ time complexity and constant space requirements.
 
 \subsection{Stability Analysis}
-We analyzed the stability of each algorithm by sorting elements with equal keys and tracking their relative order.
+We conducted a theoretical analysis of the stability characteristic of each algorithm. Unlike our performance and memory usage tests, this analysis was not based on empirical measurements but rather on the theoretical properties of the algorithms as described in literature.
 
-Stable algorithms in our implementation include:
+In our theoretical analysis, the following algorithms are classified as stable:
 \begin{itemize}
     \item Merge Sort
     \item Insertion Sort
@@ -450,7 +456,7 @@ Stable algorithms in our implementation include:
     \item Library Sort
 \end{itemize}
 
-Non-stable algorithms include:
+While the following algorithms are classified as non-stable:
 \begin{itemize}
     \item Quick Sort
     \item Heap Sort
@@ -460,7 +466,7 @@ Non-stable algorithms include:
     \item Introsort
 \end{itemize}
 
-This stability characteristic is crucial for applications where the relative order of equal elements must be preserved, such as multi-key sorting or when maintaining database consistency across multiple sorts.
+This stability characteristic is crucial for applications where the relative order of equal elements must be preserved, such as multi-key sorting or when maintaining database consistency across multiple sorts. Although we did not empirically verify the stability of our implementations, the theoretical classification provides important insights into algorithm selection for stability-sensitive applications.
 
 \subsection{Overall Evaluation}
 Based on our comprehensive analysis, we can make the following recommendations:
